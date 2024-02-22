@@ -15,7 +15,7 @@ int main()
     faabric::util::setUpCrashHandler();
 
     // Start both the planner server and the planner http endpoint
-    SPDLOG_INFO("Starting planner server");
+    SPDLOG_INFO("xiaosu Starting planner server");
     faabric::planner::PlannerServer plannerServer;
     // The RPC server starts in the background
     plannerServer.start();

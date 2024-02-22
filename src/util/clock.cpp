@@ -23,6 +23,15 @@ const long Clock::epochMillis()
     return millis;
 }
 
+const long Clock::epochMicros()
+{
+    long micros = std::chrono::duration_cast<std::chrono::microseconds>(
+                    std::chrono::system_clock::now().time_since_epoch())
+                    .count();
+
+    return micros;
+}
+
 const long Clock::timeDiff(const TimePoint& t1, const TimePoint& t2)
 {
     long age =

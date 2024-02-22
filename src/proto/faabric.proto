@@ -110,6 +110,7 @@ message Message {
 
     string snapshotKey = 12;
 
+    int64 arrivalTs = 13 [json_name = "arrival_ts"];
     int64 startTimestamp = 14 [json_name = "start_ts"];
     string resultKey = 15;
     bool executesLocally = 16;

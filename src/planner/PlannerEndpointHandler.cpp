@@ -7,6 +7,7 @@
 #include <faabric/util/batch.h>
 #include <faabric/util/json.h>
 #include <faabric/util/logging.h>
+#include <faabric/util/timing.h>
 
 namespace faabric::planner {
 
@@ -209,7 +210,6 @@ void PlannerEndpointHandler::onRequest(
                 return ctx.sendFunction(std::move(response));
             }
             auto ber = std::make_shared<faabric::BatchExecuteRequest>(rawBer);
-
             // Sanity check the BER
             if (!faabric::util::isBatchExecRequestValid(ber)) {
                 response.result(beast::http::status::bad_request);
@@ -217,6 +217,8 @@ void PlannerEndpointHandler::onRequest(
                 return ctx.sendFunction(std::move(response));
             }
 
+	    //Set BER arrival timestamp to planner state
+	    getPlanner().setAppArrivalTs(ber->appid(), faabric::util::getGlobalClock().epochMicros());
             // Execute the BER
             auto decision = getPlanner().callBatch(ber);
 

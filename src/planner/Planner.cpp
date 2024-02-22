@@ -265,6 +265,10 @@ bool Planner::isHostExpired(std::shared_ptr<Host> host, long epochTimeMs)
     return (epochTimeMs - host->registerts().epochms()) > hostTimeoutMs;
 }
 
+void Planner::setAppArrivalTs(int appId, long arrivalTs) {
+    state.appArrivalTs[appId] = arrivalTs;
+}
+
 void Planner::setMessageResult(std::shared_ptr<faabric::Message> msg)
 {
     int appId = msg->appid();
@@ -296,6 +300,7 @@ void Planner::setMessageResult(std::shared_ptr<faabric::Message> msg)
 
     // Set the result
     state.appResults[appId][msgId] = msg;
+    msg->set_arrivalts(state.appArrivalTs[appId]);
 
     // Remove the message from the in-flight requests
     if (!state.inFlightReqs.contains(appId)) {

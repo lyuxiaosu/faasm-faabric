@@ -21,6 +21,8 @@ struct PlannerState
     // each app id, we keep a map of the message id, and the actual message
     // result
     std::map<int, std::map<int, std::shared_ptr<faabric::Message>>> appResults;
+    // Keep recording of each app's arriving time, key is the app id
+    std::map<int, long> appArrivalTs;
 
     // Map holding the hosts that have registered interest in getting an app
     // result

@@ -60,6 +60,8 @@ class Planner
 
     void setMessageResult(std::shared_ptr<faabric::Message> msg);
 
+    void setAppArrivalTs(int appId, long arrivalTs);
+
     std::shared_ptr<faabric::Message> getMessageResult(
       std::shared_ptr<faabric::Message> msg);
 
