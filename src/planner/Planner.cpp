@@ -271,6 +271,7 @@ void Planner::setAppArrivalTs(int appId, long arrivalTs) {
 
 void Planner::setMessageResult(std::shared_ptr<faabric::Message> msg)
 {
+    msg->set_plannergetresultts(faabric::util::getGlobalClock().epochMicros());
     int appId = msg->appid();
     int msgId = msg->id();
 
@@ -335,7 +336,7 @@ void Planner::setMessageResult(std::shared_ptr<faabric::Message> msg)
 
             // Remove pair altogether if no more messages left
             if (req->messages_size() == 0) {
-                SPDLOG_INFO("Planner removing app {} from in-flight", appId);
+                //SPDLOG_INFO("Planner removing app {} from in-flight", appId);
                 assert(decision->nFunctions == 0);
                 assert(decision->hosts.empty());
                 assert(decision->messageIds.empty());

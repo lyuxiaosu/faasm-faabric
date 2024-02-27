@@ -89,7 +89,7 @@ class HttpConnection : public std::enable_shared_from_this<HttpConnection>
             return;
         }
         if (ec) {
-            SPDLOG_ERROR("Error reading an HTTP request: {}", ec.message());
+            //SPDLOG_ERROR("Error reading an HTTP request: {}", ec.message());
             return;
         }
         SPDLOG_TRACE("Read HTTP request of {} bytes", bytesTransferred);

@@ -520,6 +520,7 @@ void Executor::threadPoolThread(std::stop_token st, int threadPoolIdx)
             }
         } else {
             // Set normal function result
+	    msg.set_workersendts(faabric::util::getGlobalClock().epochMicros());
             faabric::planner::getPlannerClient().setMessageResult(
               std::make_shared<faabric::Message>(msg));
         }

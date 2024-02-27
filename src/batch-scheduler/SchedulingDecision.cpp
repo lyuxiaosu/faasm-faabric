@@ -75,7 +75,7 @@ std::set<std::string> SchedulingDecision::uniqueHosts()
 
 void SchedulingDecision::print(const std::string& logLevel)
 {
-    std::string printedText = "Printing scheduling decision:";
+    /*std::string printedText = "Printing scheduling decision:";
     printedText += fmt::format(
       "\n-------------- Decision for App: {} ----------------\n", appId);
     printedText += "MsgId\tAppId\tGroupId\tGrIdx\tHostIp\n";
@@ -102,6 +102,6 @@ void SchedulingDecision::print(const std::string& logLevel)
         SPDLOG_ERROR(printedText);
     } else {
         SPDLOG_ERROR("Unrecognised log level: {}", logLevel);
-    }
+    }*/
 }
 }

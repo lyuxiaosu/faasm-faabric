@@ -36,7 +36,7 @@ void PlannerEndpointHandler::onRequest(
 
     // Handle JSON
     if (requestStr.empty()) {
-        SPDLOG_ERROR("Planner handler received empty request");
+        //SPDLOG_ERROR("Planner handler received empty request");
         response.result(beast::http::status::bad_request);
         response.body() = std::string("Empty request");
         return ctx.sendFunction(std::move(response));

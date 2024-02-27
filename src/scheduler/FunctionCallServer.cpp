@@ -76,8 +76,8 @@ void FunctionCallServer::recvExecuteFunctions(std::span<const uint8_t> buffer)
 
     // This host has now been told to execute these functions no matter what
     for (int i = 0; i < parsedMsg.messages_size(); i++) {
-        parsedMsg.mutable_messages()->at(i).set_starttimestamp(
-          faabric::util::getGlobalClock().epochMillis());
+        parsedMsg.mutable_messages()->at(i).set_workergetts(
+          faabric::util::getGlobalClock().epochMicros());
         parsedMsg.mutable_messages()->at(i).set_executedhost(
           faabric::util::getSystemConfig().endpointHost);
     }
