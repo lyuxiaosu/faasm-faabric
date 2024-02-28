@@ -265,13 +265,8 @@ bool Planner::isHostExpired(std::shared_ptr<Host> host, long epochTimeMs)
     return (epochTimeMs - host->registerts().epochms()) > hostTimeoutMs;
 }
 
-void Planner::setAppArrivalTs(int appId, long arrivalTs) {
-    state.appArrivalTs[appId] = arrivalTs;
-}
-
 void Planner::setMessageResult(std::shared_ptr<faabric::Message> msg)
 {
-    msg->set_plannergetresultts(faabric::util::getGlobalClock().epochMicros());
     int appId = msg->appid();
     int msgId = msg->id();
 
@@ -301,7 +296,8 @@ void Planner::setMessageResult(std::shared_ptr<faabric::Message> msg)
 
     // Set the result
     state.appResults[appId][msgId] = msg;
-    msg->set_arrivalts(state.appArrivalTs[appId]);
+    msg->set_plannerscheduledecision(state.decisionMakeCost[appId]);
+    msg->set_plannernngreq(state.nngSendCost[appId]);
 
     // Remove the message from the in-flight requests
     if (!state.inFlightReqs.contains(appId)) {
@@ -734,7 +730,13 @@ Planner::callBatch(std::shared_ptr<BatchExecuteRequest> req)
     assert(req->messages_size() == decision->hosts.size());
     assert(req->appid() == decision->appId);
     assert(req->groupid() == decision->groupId);
-
+    
+    struct timespec before_send_t;
+    clock_gettime(CLOCK_MONOTONIC, &before_send_t);
+    long schedule_decision_us = (before_send_t.tv_sec - state.appArrivalTs[req->appid()].tv_sec) * 1000000 + \
+                           (before_send_t.tv_nsec - state.appArrivalTs[req->appid()].tv_nsec) / 1000;
+    
+    state.decisionMakeCost[req->appid()] = schedule_decision_us;
     // Lastly, asynchronously dispatch the execute requests to the
     // corresponding hosts if new functions need to be spawned (not if
     // migrating)
@@ -743,7 +745,12 @@ Planner::callBatch(std::shared_ptr<BatchExecuteRequest> req)
     if (decisionType != faabric::batch_scheduler::DecisionType::DIST_CHANGE) {
         dispatchSchedulingDecision(req, decision);
     }
-
+    struct timespec after_send_t;
+    clock_gettime(CLOCK_MONOTONIC, &after_send_t);
+    long send_us = (after_send_t.tv_sec - before_send_t.tv_sec) * 1000000 + \
+                           (after_send_t.tv_nsec - before_send_t.tv_nsec) / 1000;
+    state.nngSendCost[req->appid()] = send_us;
+    //SPDLOG_WARN("schedule cost {} send cost {}", schedule_decision_us, send_us);
     return decision;
 }
 

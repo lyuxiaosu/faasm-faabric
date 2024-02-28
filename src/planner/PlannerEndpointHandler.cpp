@@ -200,7 +200,10 @@ void PlannerEndpointHandler::onRequest(
             // in: BatchExecuteRequest
             // out: BatchExecuteRequestStatus
             // Parse the message payload
-            SPDLOG_DEBUG("Planner received EXECUTE_BATCH request");
+	    struct timespec arrvial_ts;
+	    clock_gettime(CLOCK_MONOTONIC, &arrvial_ts); 
+            
+	    SPDLOG_DEBUG("Planner received EXECUTE_BATCH request");
             faabric::BatchExecuteRequest rawBer;
             try {
                 faabric::util::jsonToMessage(msg.payloadjson(), &rawBer);
@@ -216,9 +219,8 @@ void PlannerEndpointHandler::onRequest(
                 response.body() = "Bad BatchExecRequest";
                 return ctx.sendFunction(std::move(response));
             }
-
-	    //Set BER arrival timestamp to planner state
-	    getPlanner().setAppArrivalTs(ber->appid(), faabric::util::getGlobalClock().epochMicros());
+	    //Set BER arrival timestamp to planner's state
+	    getPlanner().getState().appArrivalTs[ber->appid()] = arrvial_ts;
             // Execute the BER
             auto decision = getPlanner().callBatch(ber);
 

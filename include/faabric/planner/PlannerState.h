@@ -1,5 +1,6 @@
 #pragma once
 
+#include <time.h>
 #include <faabric/batch-scheduler/BatchScheduler.h>
 #include <faabric/batch-scheduler/SchedulingDecision.h>
 #include <faabric/planner/planner.pb.h>
@@ -22,7 +23,9 @@ struct PlannerState
     // result
     std::map<int, std::map<int, std::shared_ptr<faabric::Message>>> appResults;
     // Keep recording of each app's arriving time, key is the app id
-    std::map<int, long> appArrivalTs;
+    std::map<int, struct timespec> appArrivalTs;
+    std::map<int, long> decisionMakeCost; /* in us */
+    std::map<int, long> nngSendCost; /* in us */ 
 
     // Map holding the hosts that have registered interest in getting an app
     // result

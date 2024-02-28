@@ -142,7 +142,13 @@ std::unique_ptr<google::protobuf::Message> PlannerServer::recvRemoveHost(
 
 void PlannerServer::recvSetMessageResult(std::span<const uint8_t> buffer)
 {
+    struct timespec get_result_ts;
+    clock_gettime(CLOCK_MONOTONIC, &get_result_ts);
     PARSE_MSG(Message, buffer.data(), buffer.size());
+    long total_turnover = (get_result_ts.tv_sec - getPlanner().getState().appArrivalTs[parsedMsg.appid()].tv_sec) * 1000000 + \
+                           (get_result_ts.tv_nsec - getPlanner().getState().appArrivalTs[parsedMsg.appid()].tv_nsec) / 1000;    
+    //SPDLOG_WARN("total turnover {}", total_turnover);  
+    parsedMsg.set_totalturnover(total_turnover);
     planner.setMessageResult(std::make_shared<faabric::Message>(parsedMsg));
 }
 

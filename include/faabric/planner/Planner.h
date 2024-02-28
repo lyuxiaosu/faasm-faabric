@@ -1,5 +1,6 @@
 #pragma once
 
+#include <time.h>
 #include <faabric/batch-scheduler/SchedulingDecision.h>
 #include <faabric/planner/PlannerState.h>
 #include <faabric/planner/planner.pb.h>
@@ -60,8 +61,6 @@ class Planner
 
     void setMessageResult(std::shared_ptr<faabric::Message> msg);
 
-    void setAppArrivalTs(int appId, long arrivalTs);
-
     std::shared_ptr<faabric::Message> getMessageResult(
       std::shared_ptr<faabric::Message> msg);
 
@@ -90,7 +89,9 @@ class Planner
     // Main entrypoint to request the execution of batches
     std::shared_ptr<faabric::batch_scheduler::SchedulingDecision> callBatch(
       std::shared_ptr<BatchExecuteRequest> req);
-
+    PlannerState& getState() {
+	return state;
+    }
   private:
     // There's a singleton instance of the planner running, but it must allow
     // concurrent requests

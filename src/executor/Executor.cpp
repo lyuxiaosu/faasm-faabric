@@ -1,3 +1,4 @@
+#include <time.h>
 #include <faabric/batch-scheduler/SchedulingDecision.h>
 #include <faabric/executor/Executor.h>
 #include <faabric/executor/ExecutorContext.h>
@@ -31,6 +32,9 @@
 #define DEFAULT_MAX_SNAP_SIZE (4 * ONE_GB)
 
 #define POOL_SHUTDOWN -1
+
+extern std::map<int, struct timespec> worker_get_ts;
+extern std::map<int, long> worker_enqueue_cost;
 
 namespace faabric::executor {
 
@@ -327,7 +331,7 @@ void Executor::threadPoolThread(std::stop_token st, int threadPoolIdx)
 
             continue;
         }
-
+        long start_t = faabric::util::getGlobalClock().epochMicros();
         // If the thread is being killed, the executor itself
         // will handle the clean-up
         if (task.messageIndex == POOL_SHUTDOWN) {
@@ -376,6 +380,10 @@ void Executor::threadPoolThread(std::stop_token st, int threadPoolIdx)
 
         // Set up context
         ExecutorContext::set(this, task.req, task.messageIndex);
+        msg.set_workerenqueuereq(worker_enqueue_cost[msg.appid()]);
+        long before_exe_t = faabric::util::getGlobalClock().epochMicros();
+        long before_exe_us = before_exe_t - start_t; 
+        msg.set_workerbeforeexe(before_exe_us);
 
         // Execute the task
         int32_t returnValue;
@@ -404,6 +412,10 @@ void Executor::threadPoolThread(std::stop_token st, int threadPoolIdx)
             SPDLOG_ERROR(errorMessage);
             msg.set_outputdata(errorMessage);
         }
+        
+        long after_exe_t = faabric::util::getGlobalClock().epochMicros();
+        long exe_us = after_exe_t - before_exe_t;
+        msg.set_workerexe(exe_us);
 
         // Unset context
         ExecutorContext::unset();
@@ -463,6 +475,10 @@ void Executor::threadPoolThread(std::stop_token st, int threadPoolIdx)
         if (isLastThreadInBatch && doDirtyTracking && isRemoteThread) {
             diffs = mergeDirtyRegions(msg);
         }
+        
+ 	long work_for_snapshot_t = faabric::util::getGlobalClock().epochMicros();
+	long work_for_snapshot_us = work_for_snapshot_t - after_exe_t;
+	msg.set_workersnapshortrelated(work_for_snapshot_us);
 
         // If this is not a threads request and last in its batch, it may be
         // the main function (thread) in a threaded application, in which case
@@ -505,7 +521,11 @@ void Executor::threadPoolThread(std::stop_token st, int threadPoolIdx)
             faabric::util::UniqueLock lock(threadsMutex);
             availablePoolThreads.insert(threadPoolIdx);
         }
+        long release_t = faabric::util::getGlobalClock().epochMicros();
+        long release_us = release_t - work_for_snapshot_t;
+        msg.set_workerrelease(release_us);
 
+        struct timespec before_send;
         // Finally set the result of the task, this will allow anything
         // waiting on its result to continue execution, therefore must be
         // done once the executor has been reset, otherwise the executor may
@@ -520,10 +540,20 @@ void Executor::threadPoolThread(std::stop_token st, int threadPoolIdx)
             }
         } else {
             // Set normal function result
-	    msg.set_workersendts(faabric::util::getGlobalClock().epochMicros());
-            faabric::planner::getPlannerClient().setMessageResult(
+            clock_gettime(CLOCK_MONOTONIC, &before_send);
+            long worker_turnover_no_send = (before_send.tv_sec - worker_get_ts[msg.appid()].tv_sec) * 1000000 + (before_send.tv_nsec - worker_get_ts[msg.appid()].tv_nsec) / 1000;
+            msg.set_workerturnovernosend(worker_turnover_no_send);
+
+	    faabric::planner::getPlannerClient().setMessageResult(
               std::make_shared<faabric::Message>(msg));
         }
+        //long end_t = faabric::util::getGlobalClock().epochMicros();
+        //long send_us = end_t - release_t;
+        //struct timespec finish_exe;
+        //clock_gettime(CLOCK_MONOTONIC, &finish_exe);
+        //long worker_turnover = (finish_exe.tv_sec - worker_get_ts[msg.appid()].tv_sec) * 1000000 + (finish_exe.tv_nsec - worker_get_ts[msg.appid()].tv_nsec) / 1000;
+         
+	//SPDLOG_WARN("turnover {} before_exe_us {} exe_us {} work_for_snapshot_us {} release_us {} send_us {}", worker_turnover, before_exe_us, exe_us, work_for_snapshot_us, release_us, send_us);
     }
 }
 
@@ -553,7 +583,6 @@ int32_t Executor::executeTask(int threadPoolIdx,
 void Executor::reset(faabric::Message& msg)
 {
     faabric::util::UniqueLock lock(threadsMutex);
-
     chainedMessages.clear();
 }
 
