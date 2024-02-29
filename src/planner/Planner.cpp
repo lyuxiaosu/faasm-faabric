@@ -298,6 +298,8 @@ void Planner::setMessageResult(std::shared_ptr<faabric::Message> msg)
     state.appResults[appId][msgId] = msg;
     msg->set_plannerscheduledecision(state.decisionMakeCost[appId]);
     msg->set_plannernngreq(state.nngSendCost[appId]);
+    msg->set_plannerbeforeschedule(state.beforeScheduleCost[appId]);
+    msg->set_plannersendmapping(state.sendMappingCost[appId]);
 
     // Remove the message from the in-flight requests
     if (!state.inFlightReqs.contains(appId)) {
@@ -544,6 +546,7 @@ static faabric::batch_scheduler::HostMap convertToBatchSchedHostMap(
 std::shared_ptr<faabric::batch_scheduler::SchedulingDecision>
 Planner::callBatch(std::shared_ptr<BatchExecuteRequest> req)
 {
+    long start_t = faabric::util::getGlobalClock().epochMicros();
     int appId = req->appid();
 
     // Acquire a full lock to make the scheduling decision and update the
@@ -598,12 +601,15 @@ Planner::callBatch(std::shared_ptr<BatchExecuteRequest> req)
         SPDLOG_INFO("Decided to not migrate app: {}", appId);
         return decision;
     }
-
+ 
     // A scheduling decision will create a new PTP mapping and, as a
     // consequence, a new group ID
     int newGroupId = faabric::util::generateGid();
     decision->groupId = newGroupId;
     faabric::util::updateBatchExecGroupId(req, newGroupId);
+
+    long after_make_decision = faabric::util::getGlobalClock().epochMicros();
+    long decision_make_cost = after_make_decision - start_t;
 
     // Given a scheduling decision, depending on the decision type, we want to:
     // 1. Update the host-map to reflect the new host occupation
@@ -617,6 +623,7 @@ Planner::callBatch(std::shared_ptr<BatchExecuteRequest> req)
             decision->print();
 #endif
 
+	    long before_send = faabric::util::getGlobalClock().epochMicros();
             // 1. For a new request, we only need to update the hosts
             // with the new messages being scheduled
             for (int i = 0; i < decision->hosts.size(); i++) {
@@ -625,10 +632,12 @@ Planner::callBatch(std::shared_ptr<BatchExecuteRequest> req)
 
             // 2. For a new decision, we just add it to the in-flight map
             state.inFlightReqs[appId] = std::make_pair(req, decision);
-
-            // 3. We send the mappings to all the hosts involved
+            
+	    // 3. We send the mappings to all the hosts involved
             broker.setAndSendMappingsFromSchedulingDecision(*decision);
-
+            long after_send = faabric::util::getGlobalClock().epochMicros();
+            long diff = after_send - before_send;
+	    state.sendMappingCost[appId] = diff;
             break;
         }
         case faabric::batch_scheduler::DecisionType::SCALE_CHANGE: {
@@ -725,7 +734,7 @@ Planner::callBatch(std::shared_ptr<BatchExecuteRequest> req)
             throw std::runtime_error("Unrecognised decision type");
         }
     }
-
+   
     // Sanity-checks before actually dispatching functions for execution
     assert(req->messages_size() == decision->hosts.size());
     assert(req->appid() == decision->appId);
@@ -733,10 +742,9 @@ Planner::callBatch(std::shared_ptr<BatchExecuteRequest> req)
     
     struct timespec before_send_t;
     clock_gettime(CLOCK_MONOTONIC, &before_send_t);
-    long schedule_decision_us = (before_send_t.tv_sec - state.appArrivalTs[req->appid()].tv_sec) * 1000000 + \
-                           (before_send_t.tv_nsec - state.appArrivalTs[req->appid()].tv_nsec) / 1000;
     
-    state.decisionMakeCost[req->appid()] = schedule_decision_us;
+    state.decisionMakeCost[req->appid()] = decision_make_cost;
+
     // Lastly, asynchronously dispatch the execute requests to the
     // corresponding hosts if new functions need to be spawned (not if
     // migrating)

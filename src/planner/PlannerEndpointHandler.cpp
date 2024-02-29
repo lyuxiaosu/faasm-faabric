@@ -219,8 +219,12 @@ void PlannerEndpointHandler::onRequest(
                 response.body() = "Bad BatchExecRequest";
                 return ctx.sendFunction(std::move(response));
             }
+            struct timespec before_schedule_t;
+            clock_gettime(CLOCK_MONOTONIC, &before_schedule_t);
+            long before_schedule_us = (before_schedule_t.tv_sec - arrvial_ts.tv_sec) * 1000000 + (before_schedule_t.tv_nsec - arrvial_ts.tv_nsec) / 1000;
 	    //Set BER arrival timestamp to planner's state
 	    getPlanner().getState().appArrivalTs[ber->appid()] = arrvial_ts;
+            getPlanner().getState().beforeScheduleCost[ber->appid()] = before_schedule_us;
             // Execute the BER
             auto decision = getPlanner().callBatch(ber);
 

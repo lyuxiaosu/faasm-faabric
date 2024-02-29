@@ -26,6 +26,8 @@ struct PlannerState
     std::map<int, struct timespec> appArrivalTs;
     std::map<int, long> decisionMakeCost; /* in us */
     std::map<int, long> nngSendCost; /* in us */ 
+    std::map<int, long> beforeScheduleCost; /* in us */ 
+    std::map<int, long> sendMappingCost; /* in us */ 
 
     // Map holding the hosts that have registered interest in getting an app
     // result

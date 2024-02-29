@@ -112,6 +112,8 @@ message Message {
 
     int64 plannerScheduleDecision = 13 [json_name = "planner_decision_us"];
     int64 plannerNngReq = 20 [json_name = "worker_nng_req_us"];
+    int64 plannerBeforeSchedule = 44 [json_name = "planner_before_schedule_us"];
+    int64 plannerSendMapping = 45 [json_name = "planner_send_mapping_us"];
     int64 totalTurnover = 22 [json_name = "total_turnover_us"]; 
     int64 workerEnqueueReq = 23 [json_name = "worker_enqueue_req_us"];
     int64 workerBeforeExe = 39 [json_name = "worker_before_exe_us"];
